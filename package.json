@@ -10,7 +10,8 @@
     "node": "~0.4.7"
   },
   "dependencies": {
-    "redis":"0.7.1"
+    "redis":"0.7.1",
+    "director":"1.0.9-1"
     },
   "devDependencies": {}
 }

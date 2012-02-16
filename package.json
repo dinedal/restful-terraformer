@@ -11,7 +11,8 @@
   },
   "dependencies": {
     "redis":"0.7.1",
-    "director":"1.0.9-1"
+    "director":"1.0.9-1",
+    "yql":"0.4.6"
     },
   "devDependencies": {}
 }

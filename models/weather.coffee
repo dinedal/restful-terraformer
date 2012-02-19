@@ -81,7 +81,7 @@ class WeatherChanger extends EventEmitter
             ), ->
               redis.sunionstore "weatherchanges", ["weatherchanges", "weatherchanges_still_changing"], ->
                 redis.del "weatherchanges_still_changing"
-                redis.expire "checking", "10"
+                redis.expire "checking", "60"
 
   all: (cb) ->
     redis.sunion ["weatherchanges", "weatherchanges_still_changing"], (err, result) ->

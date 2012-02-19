@@ -135,7 +135,7 @@
             }), function() {
               return redis.sunionstore("weatherchanges", ["weatherchanges", "weatherchanges_still_changing"], function() {
                 redis.del("weatherchanges_still_changing");
-                return redis.expire("checking", "10");
+                return redis.expire("checking", "60");
               });
             });
           });

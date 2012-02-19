@@ -12,6 +12,9 @@ class WeatherChange
   save: ->
     redis.sadd "weatherchanges", JSON.stringify @
 
+  save_still_changing: ->
+    redis.sadd "weatherchanges_still_changing", JSON.stringify @
+
   complete: (cb) ->
     YQL.exec "SELECT * FROM weather.forecast WHERE location = #{@zip}", (response) =>
       current_temp = parseInt(response.query.results.channel.item.condition.temp)
@@ -22,8 +25,11 @@ class WeatherChange
         cb false
 
   post_success: () ->
-    request {url:@url, timeout:120000}, () ->
+    request.post {url:@url, timeout:120000, json: JSON.stringify @message()}, () ->
       # No one cares if we didn't get there
+
+  message: () ->
+    {message: "Weather change complete for #{@zip}, to #{@desired_temp}, within #{@tolerance} degrees farenheit"}
 
   @from_json: (json) ->
     new WeatherChange JSON.parse json
@@ -49,12 +55,14 @@ class WeatherChanger extends EventEmitter
             if success
               change.post_success()
             else
-              change.save()
+              change.save_still_changing()
             cb()
         else
           more = false
           cb()
       ), ->
+        redis.sunionstore "weatherchanges", ["weatherchanges", "weatherchanges_still_changing"], ->
+          redis.del "weatherchanges_still_changing"
 
 wc = new WeatherChanger()
 

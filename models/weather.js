@@ -26,6 +26,10 @@
       return redis.sadd("weatherchanges", JSON.stringify(this));
     };
 
+    WeatherChange.prototype.save_still_changing = function() {
+      return redis.sadd("weatherchanges_still_changing", JSON.stringify(this));
+    };
+
     WeatherChange.prototype.complete = function(cb) {
       var _this = this;
       return YQL.exec("SELECT * FROM weather.forecast WHERE location = " + this.zip, function(response) {
@@ -41,10 +45,17 @@
     };
 
     WeatherChange.prototype.post_success = function() {
-      return request({
+      return request.post({
         url: this.url,
-        timeout: 120000
+        timeout: 120000,
+        json: JSON.stringify(this.message())
       }, function() {});
+    };
+
+    WeatherChange.prototype.message = function() {
+      return {
+        message: "Weather change complete for " + this.zip + ", to " + this.desired_temp + ", within " + this.tolerance + " degrees farenheit"
+      };
     };
 
     WeatherChange.from_json = function(json) {
@@ -85,7 +96,7 @@
               if (success) {
                 change.post_success();
               } else {
-                change.save();
+                change.save_still_changing();
               }
               return cb();
             });
@@ -94,7 +105,11 @@
             return cb();
           }
         });
-      }), function() {});
+      }), function() {
+        return redis.sunionstore("weatherchanges", ["weatherchanges", "weatherchanges_still_changing"], function() {
+          return redis.del("weatherchanges_still_changing");
+        });
+      });
     };
 
     return WeatherChanger;

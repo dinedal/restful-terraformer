@@ -13,15 +13,16 @@ class WeatherChange
     redis.sadd "weatherchanges", JSON.stringify @
 
   complete: (cb) ->
-    YQL.exec "SELECT * FROM weather.forecast WHERE location = #{@zip}", (response) ->
+    YQL.exec "SELECT * FROM weather.forecast WHERE location = #{@zip}", (response) =>
       current_temp = parseInt(response.query.results.channel.item.condition.temp)
+      console.log "got current_temp #{current_temp}, desired_temp is #{@desired_temp}"
       if (current_temp <= (@desired_temp + @tolerance) and current_temp >= (@desired_temp - @tolerance))
         cb true
       else
         cb false
 
   post_success: () ->
-    request @url, () ->
+    request {url:@url, timeout:120000}, () ->
       # No one cares if we didn't get there
 
   @from_json: (json) ->
@@ -38,11 +39,17 @@ class WeatherChanger extends EventEmitter
   check_all: () ->
     more = true
     async.whilst (-> more), 
-      ((cb) -> console.log "pop"; redis.spop "weatherchanges", (err, result) ->
+      ((cb) -> redis.spop "weatherchanges", (err, result) ->
+        console.log "popped"
         if result?
           change = WeatherChange.from_json(result)
+          console.log "checking #{util.inspect change}"
           change.complete (success) ->
-            change.post_success() if success
+            console.log "got #{success}"
+            if success
+              change.post_success()
+            else
+              change.save()
             cb()
         else
           more = false

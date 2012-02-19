@@ -27,10 +27,12 @@
     };
 
     WeatherChange.prototype.complete = function(cb) {
+      var _this = this;
       return YQL.exec("SELECT * FROM weather.forecast WHERE location = " + this.zip, function(response) {
         var current_temp;
         current_temp = parseInt(response.query.results.channel.item.condition.temp);
-        if (current_temp <= (this.desired_temp + this.tolerance) && current_temp >= (this.desired_temp - this.tolerance)) {
+        console.log("got current_temp " + current_temp + ", desired_temp is " + _this.desired_temp);
+        if (current_temp <= (_this.desired_temp + _this.tolerance) && current_temp >= (_this.desired_temp - _this.tolerance)) {
           return cb(true);
         } else {
           return cb(false);
@@ -39,7 +41,10 @@
     };
 
     WeatherChange.prototype.post_success = function() {
-      return request(this.url, function() {});
+      return request({
+        url: this.url,
+        timeout: 120000
+      }, function() {});
     };
 
     WeatherChange.from_json = function(json) {
@@ -69,13 +74,19 @@
       return async.whilst((function() {
         return more;
       }), (function(cb) {
-        console.log("pop");
         return redis.spop("weatherchanges", function(err, result) {
           var change;
+          console.log("popped");
           if (result != null) {
             change = WeatherChange.from_json(result);
+            console.log("checking " + (util.inspect(change)));
             return change.complete(function(success) {
-              if (success) change.post_success();
+              console.log("got " + success);
+              if (success) {
+                change.post_success();
+              } else {
+                change.save();
+              }
               return cb();
             });
           } else {

@@ -22,6 +22,8 @@ exports.change_weather = (req, res) ->
       weather_changer.emit "create", params
       res.send {success:true}, 200
 
+# PUT to start a check on all weather changes
+
 exports.check_all_changes = (req, res) ->
   weather_changer.emit "check_all", (count) ->
     res.send {count: count}, 200

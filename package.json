@@ -1,5 +1,5 @@
 {
-    "name": "application-name"
+    "name": "restful-terraformer"
   , "version": "0.0.1"
   , "private": true
   , "dependencies": {

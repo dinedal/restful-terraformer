@@ -1,10 +1,11 @@
-redis = require('redis').createClient()
+url = require 'url'
+redis = require('redis').createClient url.parse(process.env['REDISTOGO_URL']).port, url.parse(process.env['REDISTOGO_URL']).hostname
+redis.auth url.parse(process.env['REDISTOGO_URL']).password if url.parse(process.env['REDISTOGO_URL']).password?
 YQL = require 'yql'
 async = require 'async'
 request = require 'request'
 EventEmitter = require('events').EventEmitter
 util = require 'util'
-url = require 'url'
 
 class WeatherChange
   constructor: ({@zip, @url, @desired_temp, @tolerance}) ->

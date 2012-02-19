@@ -1,4 +1,7 @@
 
+// Setup Redis connection info
+process.env['REDISTOGO_URL'] = process.env['REDISTOGO_URL'] || "redis://127.0.0.1:6379/";
+
 /**
  * Module dependencies.
  */

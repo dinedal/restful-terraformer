@@ -3,7 +3,13 @@
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
-  redis = require('redis').createClient();
+  url = require('url');
+
+  redis = require('redis').createClient(url.parse(process.env['REDISTOGO_URL']).port, url.parse(process.env['REDISTOGO_URL']).hostname);
+
+  if (url.parse(process.env['REDISTOGO_URL']).password != null) {
+    redis.auth(url.parse(process.env['REDISTOGO_URL']).password);
+  }
 
   YQL = require('yql');
 
@@ -14,8 +20,6 @@
   EventEmitter = require('events').EventEmitter;
 
   util = require('util');
-
-  url = require('url');
 
   WeatherChange = (function() {
 

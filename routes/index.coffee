@@ -17,13 +17,19 @@ exports.change_weather = (req, res) ->
   params.zip = req.param("zip")
   weather_changer.emit "validate", params, (is_valid) ->
     unless is_valid
-      res.send {success:false}, 400
+      res.json {success:false}, 400
     else
       weather_changer.emit "create", params
-      res.send {success:true}, 200
+      res.json {success:true}, 200
 
 # PUT to start a check on all weather changes
 
 exports.check_all_changes = (req, res) ->
   weather_changer.emit "check_all", (count) ->
-    res.send {count: count}, 200
+    res.json {count: count}, 200
+
+# GET all currently pending changes
+
+exports.list_all_changes = (req, res) ->
+  weather_changer.emit "all", (json_string) ->
+    res.send json_string, {'Content-Type':"application/json"}, 200

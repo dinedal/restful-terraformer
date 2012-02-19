@@ -90,6 +90,7 @@
       this.on("create", this.create);
       this.on("check_all", this.check_all);
       this.on("validate", this.validate);
+      this.on("all", this.all);
     }
 
     WeatherChanger.prototype.validate = function(params, cb) {
@@ -139,6 +140,12 @@
             });
           });
         }
+      });
+    };
+
+    WeatherChanger.prototype.all = function(cb) {
+      return redis.sunion(["weatherchanges", "weatherchanges_still_changing"], function(err, result) {
+        return cb("[" + result.toString() + "]");
       });
     };
 

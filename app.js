@@ -33,6 +33,7 @@ app.configure('production', function(){
 app.get('/', routes.index);
 app.put('/check_all', routes.check_all_changes);
 app.post('/weather/:zip', routes.change_weather);
+app.get('/weather/', routes.list_all_changes);
 
 app.listen(3000);
 // console.log("Express server listening on port %d in %s mode", app.address().port, app.settings.env);

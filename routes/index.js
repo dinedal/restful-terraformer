@@ -20,12 +20,12 @@
     params.zip = req.param("zip");
     return weather_changer.emit("validate", params, function(is_valid) {
       if (!is_valid) {
-        return res.send({
+        return res.json({
           success: false
         }, 400);
       } else {
         weather_changer.emit("create", params);
-        return res.send({
+        return res.json({
           success: true
         }, 200);
       }
@@ -34,8 +34,16 @@
 
   exports.check_all_changes = function(req, res) {
     return weather_changer.emit("check_all", function(count) {
-      return res.send({
+      return res.json({
         count: count
+      }, 200);
+    });
+  };
+
+  exports.list_all_changes = function(req, res) {
+    return weather_changer.emit("all", function(json_string) {
+      return res.send(json_string, {
+        'Content-Type': "application/json"
       }, 200);
     });
   };

@@ -49,6 +49,7 @@ class WeatherChanger extends EventEmitter
     @on "create", @create
     @on "check_all", @check_all
     @on "validate", @validate
+    @on "all", @all
 
   validate: (params, cb) ->
     cb (new WeatherChange(params)).validate()
@@ -81,6 +82,10 @@ class WeatherChanger extends EventEmitter
               redis.sunionstore "weatherchanges", ["weatherchanges", "weatherchanges_still_changing"], ->
                 redis.del "weatherchanges_still_changing"
                 redis.expire "checking", "10"
+
+  all: (cb) ->
+    redis.sunion ["weatherchanges", "weatherchanges_still_changing"], (err, result) ->
+      cb "[" + result.toString() + "]"
 
 wc = new WeatherChanger()
 

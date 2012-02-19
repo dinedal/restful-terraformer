@@ -4,7 +4,7 @@ weather_changer = require ('../models/weather')
 # GET home page.
 
 exports.index = (req, res) ->
-  res.render('index', { title: 'Express' })
+  res.render('index', { title: 'RESTful-Terraformer' })
 
 # POST weather change
 

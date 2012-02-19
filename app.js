@@ -1,16 +1,37 @@
-var http = require('http'),
-    director = require('director');
 
-var router = require('./lib/main').router;
+/**
+ * Module dependencies.
+ */
 
-var server = http.createServer(function(req, res) {
-  console.log(req.url);
-  router.dispatch(req, res, function(err) {
-    if (err) {
-      res.writeHead(404);
-      res.end();
-    }
-  });
+var express = require('express')
+  , routes = require('./routes');
+
+var app = module.exports = express.createServer();
+
+// Configuration
+
+app.configure(function(){
+  app.set('views', __dirname + '/views');
+  app.set('view engine', 'jade');
+  app.use(express.bodyParser());
+  app.use(express.methodOverride());
+  app.use(express.logger());
+  app.use(app.router);
+  app.use(express.static(__dirname + '/public'));
 });
 
-server.listen(8080);
+app.configure('development', function(){
+  app.use(express.errorHandler({ dumpExceptions: true, showStack: true }));
+});
+
+app.configure('production', function(){
+  app.use(express.errorHandler());
+});
+
+// Routes
+
+app.get('/', routes.index);
+app.post('/weather/:zip', routes.change_weather);
+
+app.listen(3000);
+// console.log("Express server listening on port %d in %s mode", app.address().port, app.settings.env);

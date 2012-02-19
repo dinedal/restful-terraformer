@@ -5,10 +5,12 @@
 
   url = require('url');
 
+  util = require('util');
+
   redis = require('redis').createClient(url.parse(process.env['REDISTOGO_URL']).port, url.parse(process.env['REDISTOGO_URL']).hostname);
 
-  if (url.parse(process.env['REDISTOGO_URL']).password != null) {
-    redis.auth(url.parse(process.env['REDISTOGO_URL']).password);
+  if (url.parse(process.env['REDISTOGO_URL']).auth != null) {
+    redis.auth(url.parse(process.env['REDISTOGO_URL']).auth.split(':')[1]);
   }
 
   YQL = require('yql');
@@ -18,8 +20,6 @@
   request = require('request');
 
   EventEmitter = require('events').EventEmitter;
-
-  util = require('util');
 
   WeatherChange = (function() {
 

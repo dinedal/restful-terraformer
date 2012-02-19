@@ -4,10 +4,12 @@ async = require 'async'
 request = require 'request'
 EventEmitter = require('events').EventEmitter
 util = require 'util'
+url = require 'url'
 
 class WeatherChange
   constructor: ({@zip, @url, @desired_temp}) ->
-    @tolerance = 2
+    @desired_temp = parseInt @desired_temp
+    @tolerance = 4
 
   save: ->
     redis.sadd "weatherchanges", JSON.stringify @
@@ -31,6 +33,12 @@ class WeatherChange
   message: () ->
     {message: "Weather change complete for #{@zip}, to #{@desired_temp}, within #{@tolerance} degrees farenheit"}
 
+  validate: () ->
+    if @zip.match(/(\d{5})/)? and !isNaN(@desired_temp) and url.parse(@url).protocol.match(/https?/)?
+      true
+    else
+      false
+
   @from_json: (json) ->
     new WeatherChange JSON.parse json
 
@@ -44,25 +52,29 @@ class WeatherChanger extends EventEmitter
 
   check_all: () ->
     more = true
-    async.whilst (-> more), 
-      ((cb) -> redis.spop "weatherchanges", (err, result) ->
-        console.log "popped"
-        if result?
-          change = WeatherChange.from_json(result)
-          console.log "checking #{util.inspect change}"
-          change.complete (success) ->
-            console.log "got #{success}"
-            if success
-              change.post_success()
-            else
-              change.save_still_changing()
-            cb()
-        else
-          more = false
-          cb()
-      ), ->
-        redis.sunionstore "weatherchanges", ["weatherchanges", "weatherchanges_still_changing"], ->
-          redis.del "weatherchanges_still_changing"
+    redis.get "checking", (err, result) ->
+      unless result?
+        redis.set "checking", "1", (err, result) ->
+          async.whilst (-> more), 
+            ((cb) -> redis.spop "weatherchanges", (err, result) ->
+              console.log "popped"
+              if result?
+                change = WeatherChange.from_json(result)
+                console.log "checking #{util.inspect change}"
+                change.complete (success) ->
+                  console.log "got #{success}"
+                  if success
+                    change.post_success()
+                  else
+                    change.save_still_changing()
+                  cb()
+              else
+                more = false
+                cb()
+            ), ->
+              redis.sunionstore "weatherchanges", ["weatherchanges", "weatherchanges_still_changing"], ->
+                redis.del "weatherchanges_still_changing"
+                redis.expire "checking", "10"
 
 wc = new WeatherChanger()
 

@@ -1,5 +1,5 @@
 (function() {
-  var EventEmitter, WeatherChange, WeatherChanger, YQL, async, redis, request, util, wc,
+  var EventEmitter, WeatherChange, WeatherChanger, YQL, async, redis, request, url, util, wc,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
@@ -15,11 +15,14 @@
 
   util = require('util');
 
+  url = require('url');
+
   WeatherChange = (function() {
 
     function WeatherChange(_arg) {
       this.zip = _arg.zip, this.url = _arg.url, this.desired_temp = _arg.desired_temp;
-      this.tolerance = 2;
+      this.desired_temp = parseInt(this.desired_temp);
+      this.tolerance = 4;
     }
 
     WeatherChange.prototype.save = function() {
@@ -58,6 +61,14 @@
       };
     };
 
+    WeatherChange.prototype.validate = function() {
+      if ((this.zip.match(/(\d{5})/) != null) && !isNaN(this.desired_temp) && (url.parse(this.url).protocol.match(/https?/) != null)) {
+        return true;
+      } else {
+        return false;
+      }
+    };
+
     WeatherChange.from_json = function(json) {
       return new WeatherChange(JSON.parse(json));
     };
@@ -82,33 +93,40 @@
     WeatherChanger.prototype.check_all = function() {
       var more;
       more = true;
-      return async.whilst((function() {
-        return more;
-      }), (function(cb) {
-        return redis.spop("weatherchanges", function(err, result) {
-          var change;
-          console.log("popped");
-          if (result != null) {
-            change = WeatherChange.from_json(result);
-            console.log("checking " + (util.inspect(change)));
-            return change.complete(function(success) {
-              console.log("got " + success);
-              if (success) {
-                change.post_success();
-              } else {
-                change.save_still_changing();
-              }
-              return cb();
+      return redis.get("checking", function(err, result) {
+        if (result == null) {
+          return redis.set("checking", "1", function(err, result) {
+            return async.whilst((function() {
+              return more;
+            }), (function(cb) {
+              return redis.spop("weatherchanges", function(err, result) {
+                var change;
+                console.log("popped");
+                if (result != null) {
+                  change = WeatherChange.from_json(result);
+                  console.log("checking " + (util.inspect(change)));
+                  return change.complete(function(success) {
+                    console.log("got " + success);
+                    if (success) {
+                      change.post_success();
+                    } else {
+                      change.save_still_changing();
+                    }
+                    return cb();
+                  });
+                } else {
+                  more = false;
+                  return cb();
+                }
+              });
+            }), function() {
+              return redis.sunionstore("weatherchanges", ["weatherchanges", "weatherchanges_still_changing"], function() {
+                redis.del("weatherchanges_still_changing");
+                return redis.expire("checking", "10");
+              });
             });
-          } else {
-            more = false;
-            return cb();
-          }
-        });
-      }), function() {
-        return redis.sunionstore("weatherchanges", ["weatherchanges", "weatherchanges_still_changing"], function() {
-          return redis.del("weatherchanges_still_changing");
-        });
+          });
+        }
       });
     };
 

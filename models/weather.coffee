@@ -3,8 +3,9 @@ YQL = require 'yql'
 async = require 'async'
 request = require 'request'
 EventEmitter = require('events').EventEmitter
+util = require 'util'
 
-class WeatherChange extends EventEmitter
+class WeatherChange
   constructor: ({@zip, @url, @desired_temp}) ->
     @tolerance = 2
 
@@ -19,20 +20,35 @@ class WeatherChange extends EventEmitter
       else
         cb false
 
-  post_success: (cb) ->
+  post_success: () ->
     request @url, () ->
       # No one cares if we didn't get there
-      redis
 
-  @all: (cb) ->
-    redis.smembers "weatherchanges", (err, results) ->
-      cb(new WeatherChange JSON.parse result for result in results)
+  @from_json: (json) ->
+    new WeatherChange JSON.parse json
 
-  @callback_all: (cb) ->
-    WeatherChange.all (all_changes) ->
-      async.filter(all_changes, ((change, cb) ->
-        change.complete cb
-        ), (completed) ->
+class WeatherChanger extends EventEmitter
+  constructor: ->
+    @on "create", @create
+    @on "check_all", @check_all
 
-      )
+  create: (params) ->
+    (new WeatherChange(params)).save()
 
+  check_all: () ->
+    more = true
+    async.whilst (-> more), 
+      ((cb) -> console.log "pop"; redis.spop "weatherchanges", (err, result) ->
+        if result?
+          change = WeatherChange.from_json(result)
+          change.complete (success) ->
+            change.post_success() if success
+            cb()
+        else
+          more = false
+          cb()
+      ), ->
+
+wc = new WeatherChanger()
+
+module.exports = wc

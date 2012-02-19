@@ -1,5 +1,5 @@
 (function() {
-  var EventEmitter, WeatherChange, YQL, async, redis, request,
+  var EventEmitter, WeatherChange, WeatherChanger, YQL, async, redis, request, util, wc,
     __hasProp = Object.prototype.hasOwnProperty,
     __extends = function(child, parent) { for (var key in parent) { if (__hasProp.call(parent, key)) child[key] = parent[key]; } function ctor() { this.constructor = child; } ctor.prototype = parent.prototype; child.prototype = new ctor; child.__super__ = parent.prototype; return child; };
 
@@ -13,9 +13,9 @@
 
   EventEmitter = require('events').EventEmitter;
 
-  WeatherChange = (function(_super) {
+  util = require('util');
 
-    __extends(WeatherChange, _super);
+  WeatherChange = (function() {
 
     function WeatherChange(_arg) {
       this.zip = _arg.zip, this.url = _arg.url, this.desired_temp = _arg.desired_temp;
@@ -38,37 +38,60 @@
       });
     };
 
-    WeatherChange.prototype.post_success = function(cb) {
-      return request(this.url, function() {
-        return redis;
-      });
+    WeatherChange.prototype.post_success = function() {
+      return request(this.url, function() {});
     };
 
-    WeatherChange.all = function(cb) {
-      return redis.smembers("weatherchanges", function(err, results) {
-        var result;
-        return cb((function() {
-          var _i, _len, _results;
-          _results = [];
-          for (_i = 0, _len = results.length; _i < _len; _i++) {
-            result = results[_i];
-            _results.push(new WeatherChange(JSON.parse(result)));
-          }
-          return _results;
-        })());
-      });
-    };
-
-    WeatherChange.callback_all = function(cb) {
-      return WeatherChange.all(function(all_changes) {
-        return async.filter(all_changes, (function(change, cb) {
-          return change.complete(cb);
-        }), function(completed) {});
-      });
+    WeatherChange.from_json = function(json) {
+      return new WeatherChange(JSON.parse(json));
     };
 
     return WeatherChange;
 
+  })();
+
+  WeatherChanger = (function(_super) {
+
+    __extends(WeatherChanger, _super);
+
+    function WeatherChanger() {
+      this.on("create", this.create);
+      this.on("check_all", this.check_all);
+    }
+
+    WeatherChanger.prototype.create = function(params) {
+      return (new WeatherChange(params)).save();
+    };
+
+    WeatherChanger.prototype.check_all = function() {
+      var more;
+      more = true;
+      return async.whilst((function() {
+        return more;
+      }), (function(cb) {
+        console.log("pop");
+        return redis.spop("weatherchanges", function(err, result) {
+          var change;
+          if (result != null) {
+            change = WeatherChange.from_json(result);
+            return change.complete(function(success) {
+              if (success) change.post_success();
+              return cb();
+            });
+          } else {
+            more = false;
+            return cb();
+          }
+        });
+      }), function() {});
+    };
+
+    return WeatherChanger;
+
   })(EventEmitter);
+
+  wc = new WeatherChanger();
+
+  module.exports = wc;
 
 }).call(this);

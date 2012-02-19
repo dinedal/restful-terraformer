@@ -20,9 +20,9 @@
   WeatherChange = (function() {
 
     function WeatherChange(_arg) {
-      this.zip = _arg.zip, this.url = _arg.url, this.desired_temp = _arg.desired_temp;
+      this.zip = _arg.zip, this.url = _arg.url, this.desired_temp = _arg.desired_temp, this.tolerance = _arg.tolerance;
       this.desired_temp = parseInt(this.desired_temp);
-      this.tolerance = 4;
+      this.tolerance = parseInt(this.tolerance) || 4;
     }
 
     WeatherChange.prototype.save = function() {
@@ -38,7 +38,7 @@
       return YQL.exec("SELECT * FROM weather.forecast WHERE location = " + this.zip, function(response) {
         var current_temp;
         current_temp = parseInt(response.query.results.channel.item.condition.temp);
-        console.log("got current_temp " + current_temp + ", desired_temp is " + _this.desired_temp);
+        console.log("got current_temp " + current_temp + ", desired_temp is " + _this.desired_temp + " for " + _this.zip);
         if (current_temp <= (_this.desired_temp + _this.tolerance) && current_temp >= (_this.desired_temp - _this.tolerance)) {
           return cb(true);
         } else {
@@ -48,11 +48,16 @@
     };
 
     WeatherChange.prototype.post_success = function() {
+      console.log("posting " + this.url);
       return request.post({
         url: this.url,
         timeout: 120000,
         json: JSON.stringify(this.message())
-      }, function() {});
+      }, function(error) {
+        if (error) {
+          return console.log("tried to POST " + this.url + ", got " + (util.inspect(error)));
+        }
+      });
     };
 
     WeatherChange.prototype.message = function() {
@@ -84,14 +89,22 @@
     function WeatherChanger() {
       this.on("create", this.create);
       this.on("check_all", this.check_all);
+      this.on("validate", this.validate);
     }
+
+    WeatherChanger.prototype.validate = function(params, cb) {
+      return cb((new WeatherChange(params)).validate());
+    };
 
     WeatherChanger.prototype.create = function(params) {
       return (new WeatherChange(params)).save();
     };
 
-    WeatherChanger.prototype.check_all = function() {
+    WeatherChanger.prototype.check_all = function(cb) {
       var more;
+      redis.scard("weatherchanges", function(err, result) {
+        return cb(result);
+      });
       more = true;
       return redis.get("checking", function(err, result) {
         if (result == null) {
@@ -101,10 +114,9 @@
             }), (function(cb) {
               return redis.spop("weatherchanges", function(err, result) {
                 var change;
-                console.log("popped");
                 if (result != null) {
                   change = WeatherChange.from_json(result);
-                  console.log("checking " + (util.inspect(change)));
+                  console.log("checking " + change.zip);
                   return change.complete(function(success) {
                     console.log("got " + success);
                     if (success) {

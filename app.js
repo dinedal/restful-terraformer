@@ -31,6 +31,7 @@ app.configure('production', function(){
 // Routes
 
 app.get('/', routes.index);
+app.get('/check_all', routes.check_all_changes);
 app.post('/weather/:zip', routes.change_weather);
 
 app.listen(3000);

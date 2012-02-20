@@ -4,6 +4,10 @@ Controls the weather, allows you to change the weather with a POST of JSON inclu
 
 All temperatures are in Fahrenheit.
 
+## Running implementation:
+
+http://restful-terraformer.herokuapp.com/weather/
+
 ## API documentation:
 
 ### POST - /weather/:zip
